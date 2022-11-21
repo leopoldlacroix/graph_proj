@@ -4,7 +4,7 @@ from graph_ex import *
 
 import time
 import plotly.express as px
-import plotly.graph_objects as go
+# import plotly.graph_objects as go
 
 weight_min, weight_max = 1, 10
 weight_objective = 13
@@ -82,7 +82,7 @@ def explore_problem(strat, connection_weight_df = connection_weight_df, weight_o
         if not step.can_improve:
             continue            
 
-        if len(tested_steps) - np.argmin(tested_steps) > 200 or elapsed_time_s > 10:
+        if len(tested_steps) - np.argmin(tested_steps) > 200 or elapsed_time_s > 5:
             break
 
         next_steps_to_try:list[str] = strat(step)    
