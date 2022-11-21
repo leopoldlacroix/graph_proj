@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 
 weight_min, weight_max = 1, 10
 weight_objective = 13
+weight_col = "nb_calls"
 
 # %%
 # generate random
@@ -145,12 +146,12 @@ fig = px.choropleth(
     color = group_weight,
     color_continuous_scale="Reds",
     hover_data=[group_index_col, group_col, node_name_col, weight_col, group_weight],
-    title= f"{best_result}"
 )
 
 fig.update_geos(fitbounds="locations", visible=False)
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 fig.show()
+print(best_result)
 
 
 # %%
