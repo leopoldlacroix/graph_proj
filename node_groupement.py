@@ -7,10 +7,13 @@ import plotly.express as px
 # import plotly.graph_objects as go
 
 weight_min, weight_max = 1, 10
-weight_objective = 13
-weight_col = "nb_calls"
+weight_objective = 10
+weight_col = "weight"
+node_name_col = 'code'
+group_index_col = 'index'
+group_col = 'group'
+group_weight = f"group {weight_col}"
 
-# %%
 # generate random
 def generate_connection_matrix(n_nodes):
     connections_matrix = np.random.randint(0,10,(n_nodes, n_nodes))//4
@@ -19,12 +22,42 @@ def generate_connection_matrix(n_nodes):
         connections_matrix[i,i] = 0
     return connections_matrix
 
-connection_weight_df = reg_geo_df
+connection_weight_df = reg_geo_df.copy()
 _weights = np.random.randint(weight_min, weight_max, connection_weight_df.shape[0])
 connection_weight_df.insert(0, weight_col, _weights)
 
 
 # %%
+def geo_plot(geo_df: pd.DataFrame, title:str):
+    fig = px.choropleth(
+        geo_df, 
+        geojson=reg_geo_dict,
+        locations=node_name_col, 
+        featureidkey="properties.code",
+        color = group_col,
+        color_continuous_scale = "Reds",
+        hover_data=[group_index_col, group_col, node_name_col, weight_col, group_weight],
+        title = title
+    )
+
+    fig.update_geos(fitbounds="locations", visible=False)
+    # fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.show()
+
+
+def geo_plot_from_step_rep(step_rep:step_rep):
+    geo_df = pd.DataFrame(
+    dict([
+        (node_name_col, step_rep.get_groups().to_list()),
+        (group_weight, step_rep.weights)
+    ])
+    ).rename_axis(group_col).reset_index().explode(node_name_col).reset_index()
+
+    geo_df[weight_col] = connection_weight_df[weight_col][geo_df[node_name_col]].tolist()
+    geo_df[group_index_col] = geo_df[group_index_col].astype(str)
+    geo_plot(geo_df, f'{step_rep}')
+
+
 def strat_try_all_possible(step: step_rep) -> list[step_rep]:
     next_steps_to_try = []
     nodes_sorted_by_weight = step.nodes_sorted_by_weight()
@@ -35,8 +68,7 @@ def strat_try_all_possible(step: step_rep) -> list[step_rep]:
         if len(node_connections) != 0:
             for node_connection in node_connections:
                 next_step = step.fuse([node, node_connection])
-                if next_step.loss <= step.loss and step.can_improve:
-                    next_steps_to_try.append(next_step)
+                next_steps_to_try.append(next_step)
 
     return next_steps_to_try
 
@@ -82,10 +114,13 @@ def explore_problem(strat, connection_weight_df = connection_weight_df, weight_o
         if not step.can_improve:
             continue            
 
-        if len(tested_steps) - np.argmin(tested_steps) > 200 or elapsed_time_s > 5:
+        if len(tested_steps) - np.argmin(tested_steps) > 200 or elapsed_time_s > 10:
             break
 
-        next_steps_to_try:list[str] = strat(step)    
+        next_steps_to_try:list[str] = strat(step)
+        
+        next_steps = np.sort(np.unique(next_steps + next_steps_to_try)).tolist()
+        # add all that can't improve to tested directly and delete them from next steps
         next_steps += next_steps_to_try    
         next_steps.sort()
 
@@ -109,22 +144,10 @@ def plot_loss(tested_steps: list[step_rep], title: str):
 plot_loss(tested_steps_closest, f'tested_steps_closest ({f"{min(tested_steps_closest)}"})')
 plot_loss(tested_steps_all, f'tested_steps_all ({f"{min(tested_steps_all)}"})')
 
-# %%
-node_name_col = 'code'
-group_index_col = 'index'
-group_col = 'group'
-group_weight = f"group {weight_col}"
+
 best_result: step_rep = np.min(tested_steps_all + tested_steps_closest)
 
 
-geo_df = pd.DataFrame(
-    dict([
-        (node_name_col, best_result.get_groups().to_list()),
-        (group_weight, best_result.weights)
-    ])
-).rename_axis(group_col).reset_index().explode(node_name_col).reset_index()
-
-geo_df[weight_col] = connection_weight_df[weight_col][geo_df[node_name_col]].tolist()
 
 # fig = go.Figure(
 #     data = go.Choropleth(
@@ -138,20 +161,7 @@ geo_df[weight_col] = connection_weight_df[weight_col][geo_df[node_name_col]].tol
 #     )
 # )
 
-fig = px.choropleth(
-    geo_df, 
-    geojson=reg_geo_dict,
-    locations=node_name_col, 
-    featureidkey="properties.code",
-    color = group_weight,
-    color_continuous_scale="Reds",
-    hover_data=[group_index_col, group_col, node_name_col, weight_col, group_weight],
-)
-
-fig.update_geos(fitbounds="locations", visible=False)
-fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-fig.show()
-print(best_result)
 
 
+geo_plot_from_step_rep(best_result)
 # %%

@@ -73,7 +73,7 @@ class step_rep:
         return new_connection_weight_df
 
     def __repr__(self) -> str:
-        return f"(step_rep) deepness: {self.deepness}, loss:{self.loss}"
+        return f"(step_rep) loss:{self.loss}"
         
     def __gt__(self, other) -> bool:
         return self.loss > other.loss
