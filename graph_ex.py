@@ -4,6 +4,15 @@ import numpy as np
 import plotly.express as px
 import json
 
+
+
+# %%
+# import pyreadr
+
+# result = pyreadr.read_r("C:/Users/leopold.lacroix/Desktop/work/_/pharma uga region/code/geojsons/1669378889_dt_shape_uga")
+
+# %%
+
 _geojson_folder = 'C:/Users/leopold.lacroix/Desktop/work/_/pharma uga region/code/geojsons/'
 _region_file = 'regions.geojson'
 _departement_file = 'departements.geojson'

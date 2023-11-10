@@ -36,53 +36,25 @@ def next_try_random_best(step: step_rep):
     return next_steps_to_try
 
 
+def next_try_slices(step:step_rep, group_selection_slice: slice, connection_selection_slice: slice):
+    """Generic function to describe how to determine next step to try:
 
-def next_try_small_bigs(step: step_rep):
+    Args:
+        step (step_rep): current step_rep to build next_steps
+        group_selection_slice (slice): slice to apply to groups_sorted_by_weight
+        connection_selection_slice (slice): slice to apply to group_connections
+    """
     next_steps_to_try = []
 
-    group = step.group_ids_lower_that_can_improve_by_weight[0]
-    group_connections = step.get_group_connections_respecting_objective(group)
+    for group in step.group_ids_lower_that_can_improve_by_weight[group_selection_slice]:
+        group_connections = step.get_group_connections_respecting_objective(group)
 
-    if len(group_connections) != 0:
-        for group_connection_i in range(min(5, group_connections.shape[0])):
-            group_connection = group_connections[group_connection_i]
+        for group_connection in group_connections[connection_selection_slice]:
             next_step = step.fuse([group, group_connection])
             if next_step.loss <= step.loss:
                 next_steps_to_try.append(next_step)
 
     return next_steps_to_try
-
-def next_try_smalls_bigs(step: step_rep) -> list[step_rep]:
-    next_steps_to_try = []
-
-    for group_i in range(min(3, step.group_ids_lower_that_can_improve_by_weight.shape[0])):
-        group = step.group_ids_lower_that_can_improve_by_weight[group_i]
-        group_connections = step.get_group_connections_respecting_objective(group)
-
-        if len(group_connections) != 0:
-            for group_connection_i in range(min(3, group_connections.shape[0])):
-                group_connection = group_connections[group_connection_i]
-                next_step = step.fuse([group, group_connection])
-                if next_step.loss <= step.loss:
-                    next_steps_to_try.append(next_step)
-
-    return next_steps_to_try
-
-def next_try_smalls_big(step: step_rep) -> list[step_rep]:
-    next_steps_to_try = []
-    groups_sorted_by_weight = step.group_ids_lower_that_can_improve_by_weight
-
-    for group_i in range(min(5, groups_sorted_by_weight.shape[0])):
-        group = groups_sorted_by_weight[group_i]
-        group_connections = step.get_group_connections_respecting_objective(group)
-        if len(group_connections) != 0:
-            next_step = step.fuse([group, group_connections[0]])
-            if next_step.loss <= step.loss:
-                next_steps_to_try.append(next_step)
-
-    return next_steps_to_try
-
-
 
 def explore_problem(next_steps_method, constructor = step_rep, df =  adjency_df, weight_objective = weight_objective):
     def info():
@@ -128,10 +100,10 @@ def explore_problem(next_steps_method, constructor = step_rep, df =  adjency_df,
     return tested_steps + next_steps
 
 explored_random_best:list[step_rep] = explore_problem(next_try_random_best)
-explored_small_bigs:list[step_rep] = explore_problem(next_try_small_bigs)
-explored_smalls_big:list[step_rep] = explore_problem(next_try_smalls_big)
-explored_smalls_bigs:list[step_rep] = explore_problem(next_try_smalls_bigs)
-# %%
+explored_small_bigs:list[step_rep] = explore_problem(lambda step_rep: next_try_slices(step_rep, slice(1), slice(5)))
+explored_smalls_big:list[step_rep] = explore_problem(lambda step_rep: next_try_slices(step_rep, slice(5), slice(1)))
+explored_smalls_bigs:list[step_rep] = explore_problem(lambda step_rep: next_try_slices(step_rep, slice(3), slice(3)))
+
 def plot_loss(step_list_dict: dict[str,list[step_rep]]):
     res_dfs: list[pd.DataFrame] = []
     titles:list[str] = []
@@ -144,7 +116,7 @@ def plot_loss(step_list_dict: dict[str,list[step_rep]]):
             })
         )
 
-        titles.append(f'{strat_name} {min(step_list)}')
+        titles.append(f'{strat_name}: {min(step_list).loss}')
     
     
     fig = px.line(
@@ -154,7 +126,7 @@ def plot_loss(step_list_dict: dict[str,list[step_rep]]):
         title = " | ".join(titles)
     )
     fig.show()
-
+# %%
 plot_loss({"smalls_big" : explored_smalls_big, "smalls_bigs": explored_smalls_bigs, "small_bigs": explored_small_bigs, "random_best": explored_random_best})
 
 
